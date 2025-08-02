@@ -2,6 +2,7 @@ package controller
 
 import (
 	"awesomeProject/model"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -19,6 +20,32 @@ func NewDiaryController(service service.IDiaryService) *DiaryController {
 
 type CreateDiaryRequest struct {
 	Content string `json:"content" binding:"required"`
+}
+
+type DiaryResponse struct {
+	*model.Diary
+	EmotionData *service.DiaryEmotionResponse `json:"emotion_data,omitempty"`
+}
+
+func (c *DiaryController) convertToResponse(diary *model.Diary) *DiaryResponse {
+	response := &DiaryResponse{Diary: diary}
+	
+	if diary.EmotionAnalysis != "" {
+		var emotionData service.DiaryEmotionResponse
+		if err := json.Unmarshal([]byte(diary.EmotionAnalysis), &emotionData); err == nil {
+			response.EmotionData = &emotionData
+		}
+	}
+	
+	return response
+}
+
+func (c *DiaryController) convertToResponseList(diaries []*model.Diary) []*DiaryResponse {
+	responses := make([]*DiaryResponse, len(diaries))
+	for i, diary := range diaries {
+		responses[i] = c.convertToResponse(diary)
+	}
+	return responses
 }
 
 func (c *DiaryController) CreateDiary(ctx *gin.Context) {
@@ -53,7 +80,7 @@ func (c *DiaryController) CreateDiary(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, diary)
+	ctx.JSON(http.StatusOK, c.convertToResponse(diary))
 }
 
 func (c *DiaryController) GetDiary(ctx *gin.Context) {
@@ -79,7 +106,7 @@ func (c *DiaryController) GetDiary(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, diary)
+	ctx.JSON(http.StatusOK, c.convertToResponse(diary))
 }
 
 func (c *DiaryController) GetDiaries(ctx *gin.Context) {
@@ -95,7 +122,7 @@ func (c *DiaryController) GetDiaries(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, diaries)
+	ctx.JSON(http.StatusOK, c.convertToResponseList(diaries))
 }
 
 type GetDiaryRequest struct {
@@ -134,7 +161,7 @@ func (c *DiaryController) UpdateDiary(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, diary)
+	ctx.JSON(http.StatusOK, c.convertToResponse(diary))
 }
 
 func (c *DiaryController) DeleteDiary(ctx *gin.Context) {

@@ -30,7 +30,7 @@ func main() {
 	var authService = service.NewAuthService(userStorage)
 	var claudeService = service.NewClaudeService()
 	var uploadService = service.NewUploadService()
-	var diaryService = service.NewDiaryService(diaryStorage)
+	var diaryService = service.NewDiaryService(diaryStorage, claudeService)
 	var authController = controller.NewAuthController(authService)
 	var emotionController = controller.NewEmotionController(claudeService)
 	var uploadController = controller.NewUploadController(uploadService)
@@ -46,8 +46,6 @@ func main() {
 		auth := api.Group("/auth")
 		{
 			auth.POST("/send-code", authController.SendVerificationCode)
-			auth.POST("/register", authController.Register)
-			auth.POST("/verify-email", authController.VerifyEmail)
 			auth.POST("/login", authController.Login)
 		}
 

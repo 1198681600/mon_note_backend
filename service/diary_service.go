@@ -3,6 +3,7 @@ package service
 import (
 	"awesomeProject/model"
 	"awesomeProject/storage"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -15,12 +16,16 @@ type IDiaryService interface {
 	DeleteDiary(id, userID uint) error
 }
 
-func NewDiaryService(storage storage.IDiaryStorage) IDiaryService {
-	return &diaryService{storage: storage}
+func NewDiaryService(storage storage.IDiaryStorage, claudeService IClaudeService) IDiaryService {
+	return &diaryService{
+		storage:      storage,
+		claudeService: claudeService,
+	}
 }
 
 type diaryService struct {
-	storage storage.IDiaryStorage
+	storage      storage.IDiaryStorage
+	claudeService IClaudeService
 }
 
 func (s *diaryService) CreateDiary(userID uint, content string, date time.Time) (*model.Diary, error) {
@@ -30,10 +35,23 @@ func (s *diaryService) CreateDiary(userID uint, content string, date time.Time) 
 		return nil, fmt.Errorf("diary already exists for this date")
 	}
 
+	// Generate emotion analysis
+	emotionResult, err := s.claudeService.AnalyzeDiaryEmotion(content, date.Format("2006-01-02"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze emotion: %v", err)
+	}
+
+	// Convert emotion result to JSON
+	emotionJSON, err := json.Marshal(emotionResult)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal emotion data: %v", err)
+	}
+
 	diary := &model.Diary{
-		UserID:  userID,
-		Content: content,
-		Date:    date,
+		UserID:         userID,
+		Content:        content,
+		Date:           date,
+		EmotionAnalysis: string(emotionJSON),
 	}
 	return diary, s.storage.CreateDiary(diary)
 }
@@ -58,7 +76,21 @@ func (s *diaryService) UpdateDiary(id, userID uint, content string) (*model.Diar
 	if err != nil {
 		return nil, err
 	}
+
+	// Generate emotion analysis for updated content
+	emotionResult, err := s.claudeService.AnalyzeDiaryEmotion(content, diary.Date.Format("2006-01-02"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze emotion: %v", err)
+	}
+
+	// Convert emotion result to JSON
+	emotionJSON, err := json.Marshal(emotionResult)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal emotion data: %v", err)
+	}
+
 	diary.Content = content
+	diary.EmotionAnalysis = string(emotionJSON)
 	return diary, s.storage.UpdateDiary(diary)
 }
 

@@ -10,8 +10,6 @@ import (
 
 type IAuthController interface {
 	SendVerificationCode(ctx *gin.Context)
-	Register(ctx *gin.Context)
-	VerifyEmail(ctx *gin.Context)
 	Login(ctx *gin.Context)
 	GetProfile(ctx *gin.Context)
 	UpdateProfile(ctx *gin.Context)
@@ -60,55 +58,7 @@ func (c *authController) SendVerificationCode(ctx *gin.Context) {
 	})
 }
 
-func (c *authController) Register(ctx *gin.Context) {
-	var req service.RegisterRequest
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, ApiResponse{
-			Code:    400,
-			Message: "请求参数错误",
-		})
-		return
-	}
-
-	if err := c.authService.Register(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, ApiResponse{
-			Code:    400,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, ApiResponse{
-		Code:    200,
-		Message: "注册成功，请验证邮箱",
-	})
-}
-
-func (c *authController) VerifyEmail(ctx *gin.Context) {
-	var req service.VerifyEmailRequest
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, ApiResponse{
-			Code:    400,
-			Message: "请求参数错误",
-		})
-		return
-	}
-
-	if err := c.authService.VerifyEmail(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, ApiResponse{
-			Code:    400,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, ApiResponse{
-		Code:    200,
-		Message: "邮箱验证成功",
-	})
-}
 
 func (c *authController) Login(ctx *gin.Context) {
 	var req service.LoginRequest

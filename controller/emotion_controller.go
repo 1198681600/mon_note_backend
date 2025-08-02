@@ -12,6 +12,7 @@ type IEmotionController interface {
 	AnalyzeWeekly(ctx *gin.Context)
 }
 
+
 type emotionController struct {
 	claudeService service.IClaudeService
 }
