@@ -311,10 +311,7 @@ func (s *claudeService) buildDiaryAnalysisPrompt(diaryContent, diaryDate string,
 - 迷茫: #B2BEC3 (浅灰色)
 
 ## 渐变类型建议规则
-- 1种情绪: radial (辐射渐变)
-- 2种情绪: diagonal (斜角渐变)
-- 3种情绪: sweep (扫描渐变)  
-- 4+种情绪: multiPoint (多焦点渐变)
+最多三种情绪
 
 ## 输出格式
 请严格按照以下JSON格式返回，不要包含任何其他文字：
