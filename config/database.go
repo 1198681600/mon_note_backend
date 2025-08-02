@@ -28,7 +28,7 @@ func InitDatabase() error {
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetMaxOpenConns(10)
 
-	err = DB.AutoMigrate(&model.User{}, &model.EmailVerification{}, &model.UserSession{})
+	err = DB.AutoMigrate(&model.User{}, &model.EmailVerification{}, &model.UserSession{}, &model.Diary{})
 	if err != nil {
 		return err
 	}

@@ -390,6 +390,156 @@ Authorization: Bearer <your_token>
 
 ---
 
+## 日记 API
+
+### 1. 创建日记
+
+**接口地址**: `POST /api/diaries`
+
+**说明**: 创建一篇新的日记。
+
+**请求头**:
+`Authorization: Bearer <your_token>`
+
+**查询参数**:
+- `date`: 日期，格式为 `YYYY-MM-DD` (可选, 默认是当天的 UTC+8 日期)。
+
+**请求参数**:
+```json
+{
+    "content": "这是我的第一篇日记。"
+}
+```
+
+**参数说明**:
+- `content`: 日记内容 (必填)
+
+**响应示例**:
+```json
+{
+    "ID": 1,
+    "CreatedAt": "2025-08-03T10:00:00Z",
+    "UpdatedAt": "2025-08-03T10:00:00Z",
+    "DeletedAt": null,
+    "UserID": 1,
+    "Date": "2025-08-03T00:00:00Z",
+    "Content": "这是我的第一篇日记。"
+}
+```
+
+---
+
+### 2. 获取用户的所有日记
+
+**接口地址**: `GET /api/diaries`
+
+**说明**: 获取当前用户的所有日记，按创建时间降序排列。
+
+**请求头**:
+`Authorization: Bearer <your_token>`
+
+**响应示例**:
+```json
+[
+    {
+        "ID": 2,
+        "CreatedAt": "2025-08-04T10:00:00Z",
+        "UpdatedAt": "2025-08-04T10:00:00Z",
+        "DeletedAt": null,
+        "UserID": 1,
+        "Content": "这是我的第二篇日记。"
+    },
+    {
+        "ID": 1,
+        "CreatedAt": "2025-08-03T10:00:00Z",
+        "UpdatedAt": "2025-08-03T10:00:00Z",
+        "DeletedAt": null,
+        "UserID": 1,
+        "Content": "这是我的第一篇日记。"
+    }
+]
+```
+
+---
+
+### 3. 获取单篇日记
+
+**接口地址**: `GET /api/diaries/:id`
+
+**说明**: 获取指定 ID 的日记。
+
+**请求头**:
+`Authorization: Bearer <your_token>`
+
+**URL 参数**:
+- `id`: 日记的唯一 ID
+
+**响应示例**:
+```json
+{
+    "ID": 1,
+    "CreatedAt": "2025-08-03T10:00:00Z",
+    "UpdatedAt": "2025-08-03T10:00:00Z",
+    "DeletedAt": null,
+    "UserID": 1,
+    "Content": "这是我的第一篇日记。"
+}
+```
+
+---
+
+### 4. 更新日记
+
+**接口地址**: `PUT /api/diaries/:id`
+
+**说明**: 更新指定 ID 的日记。
+
+**请求头**:
+`Authorization: Bearer <your_token>`
+
+**URL 参数**:
+- `id`: 日记的唯一 ID
+
+**请求参数**:
+```json
+{
+    "content": "更新后的日记内容。"
+}
+```
+
+**响应示例**:
+```json
+{
+    "ID": 1,
+    "CreatedAt": "2025-08-03T10:00:00Z",
+    "UpdatedAt": "2025-08-03T11:00:00Z",
+    "DeletedAt": null,
+    "UserID": 1,
+    "Content": "更新后的日记内容。"
+}
+```
+
+---
+
+### 5. 删除日记
+
+**接口地址**: `DELETE /api/diaries/:id`
+
+**说明**: 删除指定 ID 的日记。
+
+**请求头**:
+`Authorization: Bearer <your_token>`
+
+**URL 参数**:
+- `id`: 日记的唯一 ID
+
+**响应示例**:
+```json
+{
+    "message": "Diary deleted successfully"
+}
+```
+
 ## 错误码说明
 
 | 错误码 | 说明 |
