@@ -1,15 +1,20 @@
 package service
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/url"
-	"os"
 	"strconv"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 )
 
@@ -24,27 +29,30 @@ func NewUploadService() IUploadService {
 }
 
 type PresignedURLResponse struct {
-	UploadURL  string `json:"upload_url"`
-	FileURL    string `json:"file_url"`
-	FileName   string `json:"file_name"`
-	ExpiresIn  int64  `json:"expires_in"`
+	UploadURL string `json:"upload_url"`
+	FileURL   string `json:"file_url"`
+	FileName  string `json:"file_name"`
+	ExpiresIn int64  `json:"expires_in"`
 }
 
 func (s *uploadService) GeneratePresignedURL(fileType string) (*PresignedURLResponse, error) {
 	// 从环境变量获取R2配置
-	accountId := os.Getenv("R2_ACCOUNT_ID")
-	accessKeyId := os.Getenv("R2_ACCESS_KEY_ID")
-	secretAccessKey := os.Getenv("R2_SECRET_ACCESS_KEY")
-	bucketName := os.Getenv("R2_BUCKET_NAME")
-	region := os.Getenv("R2_REGION") // 默认 "auto"
-	
-	if accountId == "" || accessKeyId == "" || secretAccessKey == "" || bucketName == "" {
-		return nil, fmt.Errorf("R2配置缺失，请检查环境变量")
+	var bucketName = "emo-note"
+	var accountId = "64249e4e4c53300c8c7444417a5e42b1"
+	var accessKeyId = "3a38dcfc50c13767ebaa1ff790c84c3e"
+	var accessKeySecret = "c803a1ba9b0fb10dc29035f906bb5853fd8c137d03997f741f41d7195587a25e"
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKeyId, accessKeySecret, "")),
+		config.WithRegion("auto"),
+	)
+	if err != nil {
+		log.Fatal(err)
 	}
-	
-	if region == "" {
-		region = "auto"
-	}
+
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId))
+	})
 
 	// 生成唯一文件名
 	fileId := uuid.New().String()
@@ -60,27 +68,21 @@ func (s *uploadService) GeneratePresignedURL(fileType string) (*PresignedURLResp
 		return nil, fmt.Errorf("不支持的文件类型: %s", fileType)
 	}
 
-	// 设置过期时间（15分钟）
-	expiresIn := int64(900) // 15分钟
-	expiration := time.Now().UTC().Add(time.Duration(expiresIn) * time.Second)
+	presignClient := s3.NewPresignClient(client)
 
-	// 构建R2 S3兼容端点
-	endpoint := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountId)
-	
-	// 构建预签名URL
-	uploadURL, err := s.generatePresignedPutURL(endpoint, bucketName, fileName, accessKeyId, secretAccessKey, region, expiration, fileType)
+	presignResult, err := presignClient.PresignPutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(fileName),
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("生成预签名URL失败: %v", err)
+		panic("Couldn't get presigned URL for PutObject")
 	}
 
-	// 构建文件访问URL
-	fileURL := fmt.Sprintf("%s/%s/%s", endpoint, bucketName, fileName)
-
 	return &PresignedURLResponse{
-		UploadURL: uploadURL,
-		FileURL:   fileURL,
+		UploadURL: presignResult.URL,
+		FileURL:   fmt.Sprintf("https://pub-db741f3c485548dfa928869e27c25913.r2.dev/%s", fileName),
 		FileName:  fileName,
-		ExpiresIn: expiresIn,
 	}, nil
 }
 
@@ -88,20 +90,20 @@ func (s *uploadService) generatePresignedPutURL(endpoint, bucket, key, accessKey
 	// AWS Signature Version 4
 	method := "PUT"
 	service := "s3"
-	
+
 	// 时间格式
 	amzDate := expiration.Format("20060102T150405Z")
 	dateStamp := expiration.Format("20060102")
-	
+
 	// 构建凭证范围
 	credentialScope := fmt.Sprintf("%s/%s/%s/aws4_request", dateStamp, region, service)
-	
+
 	// 构建URL
 	u, err := url.Parse(fmt.Sprintf("%s/%s/%s", endpoint, bucket, key))
 	if err != nil {
 		return "", err
 	}
-	
+
 	// 查询参数
 	query := url.Values{}
 	query.Set("X-Amz-Algorithm", "AWS4-HMAC-SHA256")
@@ -109,13 +111,13 @@ func (s *uploadService) generatePresignedPutURL(endpoint, bucket, key, accessKey
 	query.Set("X-Amz-Date", amzDate)
 	query.Set("X-Amz-Expires", strconv.FormatInt(900, 10))
 	query.Set("X-Amz-SignedHeaders", "content-type;host")
-	
+
 	u.RawQuery = query.Encode()
-	
+
 	// 构建规范请求
 	canonicalHeaders := fmt.Sprintf("content-type:%s\nhost:%s\n", contentType, u.Host)
 	signedHeaders := "content-type;host"
-	
+
 	canonicalRequest := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\nUNSIGNED-PAYLOAD",
 		method,
 		u.Path,
@@ -123,21 +125,21 @@ func (s *uploadService) generatePresignedPutURL(endpoint, bucket, key, accessKey
 		canonicalHeaders,
 		signedHeaders,
 	)
-	
+
 	// 构建字符串以签名
 	stringToSign := fmt.Sprintf("AWS4-HMAC-SHA256\n%s\n%s\n%s",
 		amzDate,
 		credentialScope,
 		sha256Hex(canonicalRequest),
 	)
-	
+
 	// 计算签名
 	signature := s.calculateSignature(secretAccessKey, dateStamp, region, service, stringToSign)
-	
+
 	// 添加签名到查询参数
 	query.Set("X-Amz-Signature", signature)
 	u.RawQuery = query.Encode()
-	
+
 	return u.String(), nil
 }
 
