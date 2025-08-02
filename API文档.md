@@ -300,7 +300,76 @@ Authorization: Bearer <your_token>
 
 ---
 
-### 4. 退出登录
+### 4. 生成文件上传链接
+
+**接口地址**: `POST /api/upload/generate-url`
+
+**请求头**:
+```
+Authorization: Bearer <your_token>
+```
+
+**请求参数**:
+```json
+{
+    "file_type": "image/jpeg"
+}
+```
+
+**参数说明**:
+- `file_type`: 文件类型，支持的类型：
+  - `image/jpeg` 或 `image/jpg`: JPEG图片
+  - `image/png`: PNG图片
+  - `image/webp`: WebP图片
+
+**响应示例**:
+```json
+{
+    "code": 200,
+    "message": "生成上传链接成功",
+    "data": {
+        "upload_url": "https://account_id.r2.cloudflarestorage.com/bucket/avatars/uuid.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
+        "file_url": "https://account_id.r2.cloudflarestorage.com/bucket/avatars/uuid.jpg",
+        "file_name": "avatars/uuid.jpg",
+        "expires_in": 900
+    }
+}
+```
+
+**使用流程**:
+1. 调用此接口获取预签名上传URL
+2. 使用 `upload_url` 通过 HTTP PUT 请求直接上传文件到R2
+3. 上传成功后，使用 `file_url` 作为头像URL调用更新用户信息接口
+
+**上传文件示例**:
+```bash
+# 1. 获取上传链接
+curl -X POST http://localhost:8080/api/upload/generate-url \
+  -H "Authorization: Bearer your_token_here" \
+  -H "Content-Type: application/json" \
+  -d '{"file_type":"image/jpeg"}'
+
+# 2. 使用返回的upload_url上传文件
+curl -X PUT "返回的upload_url" \
+  -H "Content-Type: image/jpeg" \
+  --data-binary @avatar.jpg
+
+# 3. 更新用户头像
+curl -X POST http://localhost:8080/api/profile \
+  -H "Authorization: Bearer your_token_here" \
+  -H "Content-Type: application/json" \
+  -d '{"avatar":"返回的file_url"}'
+```
+
+**说明**: 
+- 上传链接有效期15分钟
+- 文件会保存到 `avatars/` 目录下
+- 需要用户登录认证
+- 需要配置Cloudflare R2环境变量
+
+---
+
+### 5. 退出登录
 
 **接口地址**: `POST /api/logout`
 
