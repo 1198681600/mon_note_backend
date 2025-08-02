@@ -8,7 +8,8 @@ import (
 )
 
 type IEmotionController interface {
-	AnalyzeDailyPattern(ctx *gin.Context)
+	AnalyzeDiary(ctx *gin.Context)
+	AnalyzeWeekly(ctx *gin.Context)
 }
 
 type emotionController struct {
@@ -21,9 +22,19 @@ func NewEmotionController(claudeService service.IClaudeService) IEmotionControll
 	}
 }
 
-func (c *emotionController) AnalyzeDailyPattern(ctx *gin.Context) {
-	var req service.EmotionAnalysisRequest
+type AnalyzeDiaryRequest struct {
+	DiaryContent string                 `json:"diary_content" binding:"required"`
+	DiaryDate    string                 `json:"diary_date" binding:"required"`
+	UserContext  map[string]interface{} `json:"user_context,omitempty"`
+}
 
+type AnalyzeWeeklyRequest struct {
+	WeekStart string                   `json:"week_start" binding:"required"`
+	DiaryData []map[string]interface{} `json:"diary_data" binding:"required"`
+}
+
+func (c *emotionController) AnalyzeDiary(ctx *gin.Context) {
+	var req AnalyzeDiaryRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, ApiResponse{
 			Code:    400,
@@ -32,15 +43,7 @@ func (c *emotionController) AnalyzeDailyPattern(ctx *gin.Context) {
 		return
 	}
 
-	if len(req.UserData) == 0 {
-		ctx.JSON(http.StatusBadRequest, ApiResponse{
-			Code:    400,
-			Message: "用户数据不能为空",
-		})
-		return
-	}
-
-	result, err := c.claudeService.AnalyzeDailyEmotionPattern(req.UserData)
+	result, err := c.claudeService.AnalyzeDiaryEmotion(req.DiaryContent, req.DiaryDate, req.UserContext)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ApiResponse{
 			Code:    500,
@@ -52,6 +55,32 @@ func (c *emotionController) AnalyzeDailyPattern(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, ApiResponse{
 		Code:    200,
 		Message: "情绪分析完成",
+		Data:    result,
+	})
+}
+
+func (c *emotionController) AnalyzeWeekly(ctx *gin.Context) {
+	var req AnalyzeWeeklyRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, ApiResponse{
+			Code:    400,
+			Message: "请求参数错误",
+		})
+		return
+	}
+
+	result, err := c.claudeService.AnalyzeWeeklyEmotion(req.WeekStart, req.DiaryData)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ApiResponse{
+			Code:    500,
+			Message: "情绪分析失败: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, ApiResponse{
+		Code:    200,
+		Message: "一周情绪分析完成",
 		Data:    result,
 	})
 }

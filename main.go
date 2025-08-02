@@ -25,17 +25,17 @@ func main() {
 	}
 
 	// 依赖注入
-	var userStorage storage.IUserStorage = storage.NewUserStorage(db)
-	var diaryStorage storage.IDiaryStorage = storage.NewDiaryStorage(db)
-	var authService service.IAuthService = service.NewAuthService(userStorage)
-	var claudeService service.IClaudeService = service.NewClaudeService()
-	var uploadService service.IUploadService = service.NewUploadService()
-	var diaryService service.IDiaryService = service.NewDiaryService(diaryStorage)
-	var authController controller.IAuthController = controller.NewAuthController(authService)
-	var emotionController controller.IEmotionController = controller.NewEmotionController(claudeService)
-	var uploadController controller.IUploadController = controller.NewUploadController(uploadService)
+	var userStorage = storage.NewUserStorage(db)
+	var diaryStorage = storage.NewDiaryStorage(db)
+	var authService = service.NewAuthService(userStorage)
+	var claudeService = service.NewClaudeService()
+	var uploadService = service.NewUploadService()
+	var diaryService = service.NewDiaryService(diaryStorage)
+	var authController = controller.NewAuthController(authService)
+	var emotionController = controller.NewEmotionController(claudeService)
+	var uploadController = controller.NewUploadController(uploadService)
 	var diaryController = controller.NewDiaryController(diaryService)
-	var authMiddleware middleware.IAuthMiddleware = middleware.NewAuthMiddleware(authService)
+	var authMiddleware = middleware.NewAuthMiddleware(authService)
 
 	router := gin.Default()
 
@@ -57,15 +57,16 @@ func main() {
 			protected.GET("/profile", authController.GetProfile)
 			protected.POST("/profile", authController.UpdateProfile)
 			protected.POST("/upload/generate-url", uploadController.GenerateUploadURL)
-			protected.POST("/emotion/analyze-daily", emotionController.AnalyzeDailyPattern)
+			protected.POST("/emotion/analyze-diary", emotionController.AnalyzeDiary)
+			protected.POST("/emotion/analyze-weekly", emotionController.AnalyzeWeekly)
 
-			diary := protected.Group("/diaries")
+			diary := protected.Group("/diary")
 			{
-				diary.POST("", diaryController.CreateDiary)
-				diary.GET("", diaryController.GetDiaries)
-				diary.GET("/:id", diaryController.GetDiary)
-				diary.PUT("/:id", diaryController.UpdateDiary)
-				diary.DELETE("/:id", diaryController.DeleteDiary)
+				diary.POST("/create", diaryController.CreateDiary)
+				diary.POST("/list", diaryController.GetDiaries)
+				diary.POST("/get", diaryController.GetDiary)
+				diary.POST("/update", diaryController.UpdateDiary)
+				diary.POST("/delete", diaryController.DeleteDiary)
 			}
 		}
 	}

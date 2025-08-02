@@ -37,7 +37,9 @@ func (s *diaryStorage) GetDiaryByID(id uint) (*model.Diary, error) {
 
 func (s *diaryStorage) GetDiaryByUserIDAndDate(userID uint, date time.Time) (*model.Diary, error) {
 	var diary model.Diary
-	if err := s.db.Where("user_id = ? AND date = ?", userID, date).First(&diary).Error; err != nil {
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	if err := s.db.Where("user_id = ? AND date >= ? AND date < ?", userID, startOfDay, endOfDay).First(&diary).Error; err != nil {
 		return nil, err
 	}
 	return &diary, nil
