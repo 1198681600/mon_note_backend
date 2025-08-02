@@ -9,14 +9,18 @@ import (
 	"time"
 )
 
-type ClaudeService struct {
+type IClaudeService interface {
+	AnalyzeDailyEmotionPattern(data []EmotionData) (*EmotionAnalysisResponse, error)
+}
+
+type claudeService struct {
 	apiURL string
 	apiKey string
 	client *http.Client
 }
 
-func NewClaudeService() *ClaudeService {
-	return &ClaudeService{
+func NewClaudeService() IClaudeService {
+	return &claudeService{
 		apiURL: "https://api.gptsapi.net/v1/chat/completions",
 		apiKey: "sk-8zU7c731868d93c819a720e252bf4c8620b5738449364Bcm",
 		client: &http.Client{
@@ -70,7 +74,7 @@ type HourlyEmotion struct {
 	Count           int     `json:"count"`
 }
 
-func (s *ClaudeService) AnalyzeDailyEmotionPattern(data []EmotionData) (*EmotionAnalysisResponse, error) {
+func (s *claudeService) AnalyzeDailyEmotionPattern(data []EmotionData) (*EmotionAnalysisResponse, error) {
 	prompt := s.buildEmotionAnalysisPrompt(data)
 	
 	claudeReq := ClaudeRequest{
@@ -128,7 +132,7 @@ func (s *ClaudeService) AnalyzeDailyEmotionPattern(data []EmotionData) (*Emotion
 	return &result, nil
 }
 
-func (s *ClaudeService) buildEmotionAnalysisPrompt(data []EmotionData) string {
+func (s *claudeService) buildEmotionAnalysisPrompt(data []EmotionData) string {
 	dataJSON, _ := json.Marshal(data)
 	
 	return fmt.Sprintf(`你是一个专业的情绪分析师。请分析以下用户的情绪数据，识别一天中情绪变化的模式。

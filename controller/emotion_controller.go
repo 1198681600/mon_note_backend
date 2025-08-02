@@ -7,17 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type EmotionController struct {
-	claudeService *service.ClaudeService
+type IEmotionController interface {
+	AnalyzeDailyPattern(ctx *gin.Context)
 }
 
-func NewEmotionController(claudeService *service.ClaudeService) *EmotionController {
-	return &EmotionController{
+type emotionController struct {
+	claudeService service.IClaudeService
+}
+
+func NewEmotionController(claudeService service.IClaudeService) IEmotionController {
+	return &emotionController{
 		claudeService: claudeService,
 	}
 }
 
-func (c *EmotionController) AnalyzeDailyPattern(ctx *gin.Context) {
+func (c *emotionController) AnalyzeDailyPattern(ctx *gin.Context) {
 	var req service.EmotionAnalysisRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {

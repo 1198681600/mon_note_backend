@@ -1,18 +1,28 @@
 package controller
 
 import (
+	"awesomeProject/model"
 	"awesomeProject/service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type AuthController struct {
-	authService *service.AuthService
+type IAuthController interface {
+	SendVerificationCode(ctx *gin.Context)
+	Register(ctx *gin.Context)
+	VerifyEmail(ctx *gin.Context)
+	Login(ctx *gin.Context)
+	GetProfile(ctx *gin.Context)
+	UpdateProfile(ctx *gin.Context)
 }
 
-func NewAuthController(authService *service.AuthService) *AuthController {
-	return &AuthController{
+type authController struct {
+	authService service.IAuthService
+}
+
+func NewAuthController(authService service.IAuthService) IAuthController {
+	return &authController{
 		authService: authService,
 	}
 }
@@ -23,7 +33,7 @@ type ApiResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-func (c *AuthController) SendVerificationCode(ctx *gin.Context) {
+func (c *authController) SendVerificationCode(ctx *gin.Context) {
 	var req struct {
 		Email string `json:"email" binding:"required,email"`
 	}
@@ -50,7 +60,7 @@ func (c *AuthController) SendVerificationCode(ctx *gin.Context) {
 	})
 }
 
-func (c *AuthController) Register(ctx *gin.Context) {
+func (c *authController) Register(ctx *gin.Context) {
 	var req service.RegisterRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -71,11 +81,11 @@ func (c *AuthController) Register(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, ApiResponse{
 		Code:    200,
-		Message: "注册成功",
+		Message: "注册成功，请验证邮箱",
 	})
 }
 
-func (c *AuthController) VerifyEmail(ctx *gin.Context) {
+func (c *authController) VerifyEmail(ctx *gin.Context) {
 	var req service.VerifyEmailRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -100,7 +110,7 @@ func (c *AuthController) VerifyEmail(ctx *gin.Context) {
 	})
 }
 
-func (c *AuthController) Login(ctx *gin.Context) {
+func (c *authController) Login(ctx *gin.Context) {
 	var req service.LoginRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -127,7 +137,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	})
 }
 
-func (c *AuthController) Logout(ctx *gin.Context) {
+func (c *authController) Logout(ctx *gin.Context) {
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
 		ctx.JSON(http.StatusUnauthorized, ApiResponse{
@@ -155,7 +165,7 @@ func (c *AuthController) Logout(ctx *gin.Context) {
 	})
 }
 
-func (c *AuthController) GetProfile(ctx *gin.Context) {
+func (c *authController) GetProfile(ctx *gin.Context) {
 	user, exists := ctx.Get("user")
 	if !exists {
 		ctx.JSON(http.StatusUnauthorized, ApiResponse{
@@ -169,5 +179,41 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 		Code:    200,
 		Message: "获取用户信息成功",
 		Data:    user,
+	})
+}
+
+func (c *authController) UpdateProfile(ctx *gin.Context) {
+	user, exists := ctx.Get("user")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, ApiResponse{
+			Code:    401,
+			Message: "用户未登录",
+		})
+		return
+	}
+
+	var req service.UpdateProfileRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, ApiResponse{
+			Code:    400,
+			Message: "请求参数错误",
+		})
+		return
+	}
+
+	userModel := user.(*model.User)
+	updatedUser, err := c.authService.UpdateProfile(userModel.ID, &req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ApiResponse{
+			Code:    400,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, ApiResponse{
+		Code:    200,
+		Message: "更新用户信息成功",
+		Data:    updatedUser,
 	})
 }

@@ -8,12 +8,22 @@ import (
 	"time"
 )
 
-type AuthService struct {
-	userStorage *storage.UserStorage
+type IAuthService interface {
+	SendVerificationCode(email string) error
+	Register(req *RegisterRequest) error
+	VerifyEmail(req *VerifyEmailRequest) error
+	Login(req *LoginRequest) (*AuthResponse, error)
+	ValidateToken(token string) (*model.User, error)
+	Logout(token string) error
+	UpdateProfile(userID uint, req *UpdateProfileRequest) (*model.User, error)
 }
 
-func NewAuthService(userStorage *storage.UserStorage) *AuthService {
-	return &AuthService{
+type authService struct {
+	userStorage storage.IUserStorage
+}
+
+func NewAuthService(userStorage storage.IUserStorage) IAuthService {
+	return &authService{
 		userStorage: userStorage,
 	}
 }
@@ -38,7 +48,15 @@ type AuthResponse struct {
 	User  *model.User `json:"user"`
 }
 
-func (s *AuthService) SendVerificationCode(email string) error {
+type UpdateProfileRequest struct {
+	Nickname   *string `json:"nickname"`
+	Gender     *string `json:"gender"`
+	Age        *int    `json:"age"`
+	Profession *string `json:"profession"`
+	Avatar     *string `json:"avatar"`
+}
+
+func (s *authService) SendVerificationCode(email string) error {
 	verification := &model.EmailVerification{
 		Email:            email,
 		VerificationCode: "111111",
@@ -49,7 +67,7 @@ func (s *AuthService) SendVerificationCode(email string) error {
 	return s.userStorage.CreateEmailVerification(verification)
 }
 
-func (s *AuthService) Register(req *RegisterRequest) error {
+func (s *authService) Register(req *RegisterRequest) error {
 	verification, err := s.userStorage.GetEmailVerification(req.Email, req.Code)
 	if err != nil {
 		return errors.New("验证码无效或已过期")
@@ -73,7 +91,7 @@ func (s *AuthService) Register(req *RegisterRequest) error {
 	return s.userStorage.CreateUser(user)
 }
 
-func (s *AuthService) VerifyEmail(req *VerifyEmailRequest) error {
+func (s *authService) VerifyEmail(req *VerifyEmailRequest) error {
 	verification, err := s.userStorage.GetEmailVerification(req.Email, req.Code)
 	if err != nil {
 		return errors.New("验证码无效或已过期")
@@ -93,7 +111,7 @@ func (s *AuthService) VerifyEmail(req *VerifyEmailRequest) error {
 	return s.userStorage.UpdateUser(user)
 }
 
-func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
+func (s *authService) Login(req *LoginRequest) (*AuthResponse, error) {
 	verification, err := s.userStorage.GetEmailVerification(req.Email, req.Code)
 	if err != nil {
 		return nil, errors.New("验证码无效或已过期")
@@ -135,7 +153,7 @@ func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
 	}, nil
 }
 
-func (s *AuthService) ValidateToken(token string) (*model.User, error) {
+func (s *authService) ValidateToken(token string) (*model.User, error) {
 	session, err := s.userStorage.GetUserSessionByToken(token)
 	if err != nil {
 		return nil, errors.New("token无效或已过期")
@@ -143,6 +161,36 @@ func (s *AuthService) ValidateToken(token string) (*model.User, error) {
 	return &session.User, nil
 }
 
-func (s *AuthService) Logout(token string) error {
+func (s *authService) Logout(token string) error {
 	return s.userStorage.DeleteUserSession(token)
+}
+
+func (s *authService) UpdateProfile(userID uint, req *UpdateProfileRequest) (*model.User, error) {
+	user, err := s.userStorage.GetUserByID(userID)
+	if err != nil {
+		return nil, errors.New("用户不存在")
+	}
+
+	if req.Nickname != nil {
+		user.Nickname = *req.Nickname
+	}
+	if req.Gender != nil {
+		user.Gender = *req.Gender
+	}
+	if req.Age != nil {
+		user.Age = *req.Age
+	}
+	if req.Profession != nil {
+		user.Profession = *req.Profession
+	}
+	if req.Avatar != nil {
+		user.Avatar = *req.Avatar
+	}
+
+	err = s.userStorage.UpdateUser(user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

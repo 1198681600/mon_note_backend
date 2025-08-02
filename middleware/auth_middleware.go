@@ -8,12 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthMiddleware struct {
-	authService *service.AuthService
+type IAuthMiddleware interface {
+	RequireAuth() gin.HandlerFunc
+	CORS() gin.HandlerFunc
 }
 
-func NewAuthMiddleware(authService *service.AuthService) *AuthMiddleware {
-	return &AuthMiddleware{
+type authMiddleware struct {
+	authService service.IAuthService
+}
+
+func NewAuthMiddleware(authService service.IAuthService) IAuthMiddleware {
+	return &authMiddleware{
 		authService: authService,
 	}
 }
@@ -24,7 +29,7 @@ type ApiResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
+func (m *authMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -57,7 +62,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	}
 }
 
-func (m *AuthMiddleware) CORS() gin.HandlerFunc {
+func (m *authMiddleware) CORS() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.Header("Access-Control-Allow-Origin", "*")
 		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")

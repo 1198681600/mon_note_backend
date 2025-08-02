@@ -247,7 +247,60 @@ Authorization: Bearer <your_token>
 
 ---
 
-### 3. 退出登录
+### 3. 更新用户信息
+
+**接口地址**: `PUT /api/profile`
+
+**请求头**:
+```
+Authorization: Bearer <your_token>
+```
+
+**请求参数**:
+```json
+{
+    "nickname": "我的昵称",
+    "gender": "男",
+    "age": 25,
+    "profession": "软件工程师",
+    "avatar": "https://example.com/avatar.jpg"
+}
+```
+
+**参数说明**:
+- `nickname`: 昵称 (可选)
+- `gender`: 性别 (可选)
+- `age`: 年龄 (可选)
+- `profession`: 职业 (可选)
+- `avatar`: 头像URL (可选)
+
+**响应示例**:
+```json
+{
+    "code": 200,
+    "message": "更新用户信息成功",
+    "data": {
+        "id": 1,
+        "email": "user@example.com",
+        "is_email_verified": true,
+        "avatar": "https://example.com/avatar.jpg",
+        "nickname": "我的昵称",
+        "gender": "男",
+        "age": 25,
+        "profession": "软件工程师",
+        "created_at": "2025-01-01T12:00:00Z",
+        "updated_at": "2025-01-01T14:30:00Z"
+    }
+}
+```
+
+**说明**: 
+- 所有参数都是可选的，只更新提供的字段
+- 需要用户登录认证
+
+---
+
+### 4. 退出登录
 
 **接口地址**: `POST /api/logout`
 
@@ -368,13 +421,27 @@ Authorization: Bearer <your_token>
      -H "Authorization: Bearer your_token_here"
    ```
 
-4. **退出登录**
+4. **更新用户信息**
+   ```bash
+   curl -X PUT http://localhost:8080/api/profile \
+     -H "Authorization: Bearer your_token_here" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "nickname": "我的昵称",
+       "gender": "男",
+       "age": 25,
+       "profession": "软件工程师",
+       "avatar": "https://example.com/avatar.jpg"
+     }'
+   ```
+
+5. **退出登录**
    ```bash
    curl -X POST http://localhost:8080/api/logout \
      -H "Authorization: Bearer your_token_here"
    ```
 
-5. **分析情绪变化**
+6. **分析情绪变化**
    ```bash
    curl -X POST http://localhost:8080/api/emotion/analyze-daily \
      -H "Authorization: Bearer your_token_here" \

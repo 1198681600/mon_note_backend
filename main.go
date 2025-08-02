@@ -17,12 +17,12 @@ func main() {
 	}
 
 	db := config.GetDB()
-	userStorage := storage.NewUserStorage(db)
-	authService := service.NewAuthService(userStorage)
-	claudeService := service.NewClaudeService()
-	authController := controller.NewAuthController(authService)
-	emotionController := controller.NewEmotionController(claudeService)
-	authMiddleware := middleware.NewAuthMiddleware(authService)
+	var userStorage storage.IUserStorage = storage.NewUserStorage(db)
+	var authService service.IAuthService = service.NewAuthService(userStorage)
+	var claudeService service.IClaudeService = service.NewClaudeService()
+	var authController controller.IAuthController = controller.NewAuthController(authService)
+	var emotionController controller.IEmotionController = controller.NewEmotionController(claudeService)
+	var authMiddleware middleware.IAuthMiddleware = middleware.NewAuthMiddleware(authService)
 
 	router := gin.Default()
 
@@ -42,7 +42,7 @@ func main() {
 		protected.Use(authMiddleware.RequireAuth())
 		{
 			protected.GET("/profile", authController.GetProfile)
-			protected.POST("/logout", authController.Logout)
+			protected.POST("/profile", authController.UpdateProfile)
 			protected.POST("/emotion/analyze-daily", emotionController.AnalyzeDailyPattern)
 		}
 	}
