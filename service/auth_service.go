@@ -19,8 +19,8 @@ func NewAuthService(userStorage *storage.UserStorage) *AuthService {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
 }
 
 type VerifyEmailRequest struct {
@@ -29,8 +29,8 @@ type VerifyEmailRequest struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
 }
 
 type AuthResponse struct {
@@ -39,11 +39,6 @@ type AuthResponse struct {
 }
 
 func (s *AuthService) SendVerificationCode(email string) error {
-	existingUser, _ := s.userStorage.GetUserByEmail(email)
-	if existingUser != nil {
-		return errors.New("用户已存在")
-	}
-
 	verification := &model.EmailVerification{
 		Email:            email,
 		VerificationCode: "111111",
@@ -55,20 +50,24 @@ func (s *AuthService) SendVerificationCode(email string) error {
 }
 
 func (s *AuthService) Register(req *RegisterRequest) error {
+	verification, err := s.userStorage.GetEmailVerification(req.Email, req.Code)
+	if err != nil {
+		return errors.New("验证码无效或已过期")
+	}
+
 	existingUser, _ := s.userStorage.GetUserByEmail(req.Email)
 	if existingUser != nil {
 		return errors.New("用户已存在")
 	}
 
-	hashedPassword, err := utils.HashPassword(req.Password)
+	err = s.userStorage.MarkVerificationAsUsed(verification.ID)
 	if err != nil {
 		return err
 	}
 
 	user := &model.User{
 		Email:           req.Email,
-		Password:        hashedPassword,
-		IsEmailVerified: false,
+		IsEmailVerified: true,
 	}
 
 	return s.userStorage.CreateUser(user)
@@ -95,6 +94,11 @@ func (s *AuthService) VerifyEmail(req *VerifyEmailRequest) error {
 }
 
 func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
+	verification, err := s.userStorage.GetEmailVerification(req.Email, req.Code)
+	if err != nil {
+		return nil, errors.New("验证码无效或已过期")
+	}
+
 	user, err := s.userStorage.GetUserByEmail(req.Email)
 	if err != nil {
 		return nil, errors.New("用户不存在")
@@ -104,8 +108,9 @@ func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
 		return nil, errors.New("请先验证邮箱")
 	}
 
-	if !utils.CheckPassword(req.Password, user.Password) {
-		return nil, errors.New("密码错误")
+	err = s.userStorage.MarkVerificationAsUsed(verification.ID)
+	if err != nil {
+		return nil, err
 	}
 
 	token, err := utils.GenerateRandomToken(32)

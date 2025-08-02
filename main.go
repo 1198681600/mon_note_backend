@@ -19,7 +19,9 @@ func main() {
 	db := config.GetDB()
 	userStorage := storage.NewUserStorage(db)
 	authService := service.NewAuthService(userStorage)
+	claudeService := service.NewClaudeService()
 	authController := controller.NewAuthController(authService)
+	emotionController := controller.NewEmotionController(claudeService)
 	authMiddleware := middleware.NewAuthMiddleware(authService)
 
 	router := gin.Default()
@@ -41,6 +43,7 @@ func main() {
 		{
 			protected.GET("/profile", authController.GetProfile)
 			protected.POST("/logout", authController.Logout)
+			protected.POST("/emotion/analyze-daily", emotionController.AnalyzeDailyPattern)
 		}
 	}
 

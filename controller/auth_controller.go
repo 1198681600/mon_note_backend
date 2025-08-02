@@ -71,7 +71,7 @@ func (c *AuthController) Register(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, ApiResponse{
 		Code:    200,
-		Message: "注册成功，请验证邮箱",
+		Message: "注册成功",
 	})
 }
 
